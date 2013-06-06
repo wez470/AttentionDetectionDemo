@@ -2,14 +2,14 @@
 class Circle
 {
   //coordinates
-  int x;
-  int y;
+  protected int x;
+  protected int y;
   //velocity
-  int velX;
-  int velY;
-  int diam;
+  protected int velX;
+  protected int velY;
+  protected int diam;
 
-  Circle(int startX, int startY, int xVel, int yVel, int d)
+  public Circle(int startX, int startY, int xVel, int yVel, int d)
   {
     x = startX;
     y = startY;
@@ -19,7 +19,7 @@ class Circle
     fill(16, 92, 1);
   }
 
-  void update()
+  public void update()
   {
     //test for wall to bounce off of
     if(x + (diam / 2) >= width || x - (diam / 2) <= 0)
@@ -35,7 +35,7 @@ class Circle
     y += velY;
   } 
 
-  void drawCircle()
+  public void drawCircle()
   {
     ellipse(x, y, diam, diam);
   }
