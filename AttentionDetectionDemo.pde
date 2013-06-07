@@ -19,13 +19,10 @@ RECT rectOfInterest = new RECT();
 HWND windowOfInterest;
 Circle circle;
 ArrayList<Circle> trail = new ArrayList<Circle>();
-FaceProcessingThread faceProcThread;
-EyeProcessingThread eyeProcThread;
+ImageProcessingThread imgProcThread;
 
 void setup()
 {  
-
-  
   cam = new SimpleOpenNI(this); //initialize kinect camera
   cam.setMirror(true);
   cam.enableRGB();
@@ -35,10 +32,12 @@ void setup()
 
   size(640, 480);
   
-  faceProcThread = new FaceProcessingThread(500, "Face Processing Thread");
-  eyeProcThread = new EyeProcessingThread(1000, "Eye Processing Thread");
-  faceProcThread.start();
-  eyeProcThread.start();
+  imgProcThread = new ImageProcessingThread("Image Processing Thread");
+  imgProcThread.start();
+  int currTime = millis();
+  while(millis() - currTime < 4000)
+  {
+  }
 
   int windowsAway = 6; //the window of interest is six windows above the foreground window at the start
   windowOfInterest = User32.INSTANCE.GetForegroundWindow();
@@ -96,7 +95,7 @@ void draw()
     opencv.cascade("C:/opencv/data/haarcascades/", "haarcascade_frontalface_alt_tree.xml"); //initialize detection of face
     faceRect = opencv.detect(false); //get rectangle array of faces
 
-    faceProcThread.setCurrNumFaces(faceRect.length);
+    imgProcThread.setCurrNumFaces(faceRect.length);
     framesFace = 0;
     imgProcessed = true;
   }
@@ -113,7 +112,7 @@ void draw()
     opencv.cascade("C:/opencv/data/haarcascades/", "haarcascade_eye.xml"); //initialize detection of eyes
     eyeRect = opencv.detect(false); //get rectangle array of eyes
 
-    faceProcThread.setCurrNumEyes(eyeRect.length);
+    imgProcThread.setCurrNumEyes(eyeRect.length);
     framesEyes = 0;
     imgProcessed= true;
   }
@@ -299,21 +298,21 @@ void calculateAndDraw()
 {
   float attentionProbability;
   //max of one face for attention calculation
-  if(faceProcThread.getCurrNumFaces() > 1)
+  if(imgProcThread.getCurrNumFaces() > 1)
   {
-    faceProcThread.setCurrNumFaces(1);
+    imgProcThread.setCurrNumFaces(1);
   }
   //max of two eyes for attention calculation
-  if(eyeProcThread.getCurrNumEyes() > 2)
+  if(imgProcThread.getCurrNumEyes() > 2)
   {
-    eyeProcThread.setCurrNumEyes(2);
+    imgProcThread.setCurrNumEyes(2);
   }
   
   //formula to decide if the user is paying attention or not.  Magic number are used to
   //try and weight the different types of data input to calculate probability of user attention
   attentionProbability = (((5.0 - currWindowCoverage / 9.0) * 22.0)
-    + (faceProcThread.getCurrNumFaces() * 200.0)
-    + (eyeProcThread.getCurrNumEyes() * 50.0)
+    + (imgProcThread.getCurrNumFaces() * 200.0)
+    + (imgProcThread.getCurrNumEyes() * 50.0)
     + max(0, ((10.0 - ((millis() - mouseTimer) / 1000.0)) * 8.0))
     + max(0, ((10.0 - ((millis() - keyTimer) / 1000.0)) * 5.0))
     ) / 540.0;
