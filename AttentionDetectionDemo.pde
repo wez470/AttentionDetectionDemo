@@ -6,8 +6,8 @@ import com.sun.jna.*; //for JNA libraries
 import com.sun.jna.platform.win32.WinDef.*; //for win32 definitions
 import java.util.ArrayList;
 
-OpenCV opencv; 
 SimpleOpenNI cam;
+OpenCV opencv; 
 Rectangle[] faceRect;
 Rectangle[] eyeRect;
 int strBuffSize = 512;
@@ -19,10 +19,13 @@ RECT rectOfInterest = new RECT();
 HWND windowOfInterest;
 Circle circle;
 ArrayList<Circle> trail = new ArrayList<Circle>();
-
+FaceProcessingThread faceProcThread;
+EyeProcessingThread eyeProcThread;
 
 void setup()
 {  
+
+  
   cam = new SimpleOpenNI(this); //initialize kinect camera
   cam.setMirror(true);
   cam.enableRGB();
@@ -30,7 +33,12 @@ void setup()
   opencv = new OpenCV(this);
   opencv.allocate(cam.rgbWidth(), cam.rgbHeight()); //size of image buffer
 
-  size(cam.rgbWidth(), cam.rgbHeight());
+  size(640, 480);
+  
+  faceProcThread = new FaceProcessingThread(500, "Face Processing Thread");
+  eyeProcThread = new EyeProcessingThread(1000, "Eye Processing Thread");
+  faceProcThread.start();
+  eyeProcThread.start();
 
   int windowsAway = 6; //the window of interest is six windows above the foreground window at the start
   windowOfInterest = User32.INSTANCE.GetForegroundWindow();
@@ -47,7 +55,7 @@ void setup()
 
   //Ball setup
   int ballVelXY = 3;
-  int diam = 90;
+  int diam = 50;
   circle = new Circle(width / 2, height / 2, ballVelXY, ballVelXY, diam);
   fill(16, 92, 1);
 }
@@ -67,8 +75,6 @@ void mousePressed()
 
 int mouseTimer = 0;
 int keyTimer = 0;
-int currNumFaces = 0;
-int currNumEyes = 0;
 int framesFace = 10; //frame counter for detecting faces. set to 10 so detection happens on first frame
 int framesPerFace = 10; //number of frames that go by before doing face detection again
 int framesEyes = 5; //frame counter for detecting eyes. set to 5 to offset face detection
@@ -81,7 +87,7 @@ boolean overlap = false;
 void draw()
 {
   boolean imgProcessed = false;
-  
+  /*
   if(framesFace >= framesPerFace)
   {
     cam.update(); //get new frame/info from kinect
@@ -90,7 +96,7 @@ void draw()
     opencv.cascade("C:/opencv/data/haarcascades/", "haarcascade_frontalface_alt_tree.xml"); //initialize detection of face
     faceRect = opencv.detect(false); //get rectangle array of faces
 
-    currNumFaces = faceRect.length;
+    faceProcThread.setCurrNumFaces(faceRect.length);
     framesFace = 0;
     imgProcessed = true;
   }
@@ -107,7 +113,7 @@ void draw()
     opencv.cascade("C:/opencv/data/haarcascades/", "haarcascade_eye.xml"); //initialize detection of eyes
     eyeRect = opencv.detect(false); //get rectangle array of eyes
 
-    currNumEyes = eyeRect.length;
+    faceProcThread.setCurrNumEyes(eyeRect.length);
     framesEyes = 0;
     imgProcessed= true;
   }
@@ -115,6 +121,7 @@ void draw()
   {
     framesEyes++;
   }
+  */
   
   //mouse activity detection
   if(!imgProcessed)
@@ -283,26 +290,30 @@ int percentOverlap()
 }
 
 
+int addTailCount = 0;
+int trailDiam = 10;
+
+
 //stores the current state as the result of the current test
 void calculateAndDraw()
 {
   float attentionProbability;
   //max of one face for attention calculation
-  if(currNumFaces > 1)
+  if(faceProcThread.getCurrNumFaces() > 1)
   {
-    currNumFaces = 1;
+    faceProcThread.setCurrNumFaces(1);
   }
   //max of two eyes for attention calculation
-  if(currNumEyes > 2)
+  if(eyeProcThread.getCurrNumEyes() > 2)
   {
-    currNumEyes = 2;
+    eyeProcThread.setCurrNumEyes(2);
   }
   
   //formula to decide if the user is paying attention or not.  Magic number are used to
   //try and weight the different types of data input to calculate probability of user attention
   attentionProbability = (((5.0 - currWindowCoverage / 9.0) * 22.0)
-    + (currNumFaces * 200.0)
-    + (currNumEyes / 2.0 * 100.0)
+    + (faceProcThread.getCurrNumFaces() * 200.0)
+    + (eyeProcThread.getCurrNumEyes() * 50.0)
     + max(0, ((10.0 - ((millis() - mouseTimer) / 1000.0)) * 8.0))
     + max(0, ((10.0 - ((millis() - keyTimer) / 1000.0)) * 5.0))
     ) / 540.0;
@@ -314,23 +325,41 @@ void calculateAndDraw()
   
   if((int) (attentionProbability * 100.0) < 50)
   {
-    trail.add(new Circle(circle.x, circle.y, 0, 0, circle.diam));
+    if(addTailCount == 0)
+    {
+      trail.add(new Circle(circle.x, circle.y, 0, 0, trailDiam));
+      addTailCount = 3;
+    }
+    addTailCount--;
   }
   else
   {
-    trail.add(new Circle(circle.x, circle.y, 0, 0, circle.diam));
-    int removeCount = 0;
-    //equation for finding how fast to remove old images.  Exponential equation so older images get removed faster
-    //removeSpeed never goes below double speed.
-    //Equation:   trail.size() = 1.5 * removeSpeed ^ 4
-    int removeSpeed = max(2, (int) pow(((float) trail.size() / 1.5), 0.25));
-    
-    while(removeCount < removeSpeed && !trail.isEmpty())
+    if(trail.size() > 0)
     {
-      trail.remove(0); //remove the oldest circle from the list to draw
-      removeCount++;
+      if(addTailCount == 0)
+      {
+        trail.add(new Circle(circle.x, circle.y, 0, 0, trailDiam, trail.get(trail.size() - 1).opacity));
+        addTailCount = 3;
+      }
+      addTailCount--;
+    }
+    //equation for finding how fast to remove old images.  Exponential equation so older images get removed faster
+    //Doesn't get below 5 so that the tail will continue to be removed when it gets short 
+    //Equation:   trail.size() = (removeSpeed ^ 3) / 5
+    int removeSpeed = max(5, (int) pow(((float) trail.size() * 5.0), (1.0 / 3.0)));
+    
+    for(int i = 0; i < min(removeSpeed, trail.size()); i++)
+    {
+      Circle currTail = trail.get(i);
+      currTail.opacity -= 30;
+      if(currTail.opacity <= 30)
+      {
+        trail.remove(i);
+
+      }
     }
   } 
+  
   background(107, 142, 35);
   circle.update();
 

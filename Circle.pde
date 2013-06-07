@@ -8,6 +8,7 @@ class Circle
   protected int velX;
   protected int velY;
   protected int diam;
+  protected int opacity;
 
   public Circle(int startX, int startY, int xVel, int yVel, int d)
   {
@@ -16,8 +17,18 @@ class Circle
     velX = xVel;
     velY = yVel;
     diam = d;
-    fill(16, 92, 1);
+    opacity = 255;
   }
+
+  public Circle(int startX, int startY, int xVel, int yVel, int d, int opac)
+  {
+    x = startX;
+    y = startY;
+    velX = xVel;
+    velY = yVel;
+    diam = d;
+    opacity = opac;
+  }  
 
   public void update()
   {
@@ -37,6 +48,8 @@ class Circle
 
   public void drawCircle()
   {
+    stroke(0, 0, 0, opacity);
+    fill(16, 92, 1, opacity);
     ellipse(x, y, diam, diam);
   }
 }
