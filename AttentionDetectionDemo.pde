@@ -23,6 +23,7 @@ ImageProcessingThread imgProcThread;
 
 void setup()
 {  
+  //frameRate(75);
   cam = new SimpleOpenNI(this); //initialize kinect camera
   cam.setMirror(true);
   cam.enableRGB();
@@ -34,10 +35,6 @@ void setup()
   
   imgProcThread = new ImageProcessingThread("Image Processing Thread");
   imgProcThread.start();
-  int currTime = millis();
-  while(millis() - currTime < 4000)
-  {
-  }
 
   int windowsAway = 6; //the window of interest is six windows above the foreground window at the start
   windowOfInterest = User32.INSTANCE.GetForegroundWindow();
@@ -57,6 +54,7 @@ void setup()
   int diam = 50;
   circle = new Circle(width / 2, height / 2, ballVelXY, ballVelXY, diam);
   fill(16, 92, 1);
+  
 }
 
 
@@ -73,70 +71,43 @@ void mousePressed()
 
 
 int mouseTimer = 0;
+int windowIndex = 0;
 int keyTimer = 0;
-int framesFace = 10; //frame counter for detecting faces. set to 10 so detection happens on first frame
-int framesPerFace = 10; //number of frames that go by before doing face detection again
-int framesEyes = 5; //frame counter for detecting eyes. set to 5 to offset face detection
-int framesPerEyes = 10; //number of frames that go by before doing eye detection again
 int currWindowCoverage = 0;
 boolean mouseWasPressed = false;
 boolean overlap = false;
+boolean firstTime = true;
 
 
 void draw()
 {
-  boolean imgProcessed = false;
-  /*
-  if(framesFace >= framesPerFace)
-  {
-    cam.update(); //get new frame/info from kinect
-    opencv.copy(cam.rgbImage()); //get the current frame into opencv
-
-    opencv.cascade("C:/opencv/data/haarcascades/", "haarcascade_frontalface_alt_tree.xml"); //initialize detection of face
-    faceRect = opencv.detect(false); //get rectangle array of faces
-
-    imgProcThread.setCurrNumFaces(faceRect.length);
-    framesFace = 0;
-    imgProcessed = true;
+  //println(frameRate);
+  if(firstTime)
+  { 
+    //wait for other thread to start up
+    int currTime = millis();
+    while(millis() - currTime < 4000)
+    {
+    }
+    firstTime = false;
   }
-  else
-  {
-    framesFace++;
-  }
-  
-  if(framesEyes >= framesPerEyes)
-  {
-    cam.update(); //get new frame/info from kinect
-    opencv.copy(cam.rgbImage()); //get the current frame into opencv
-    
-    opencv.cascade("C:/opencv/data/haarcascades/", "haarcascade_eye.xml"); //initialize detection of eyes
-    eyeRect = opencv.detect(false); //get rectangle array of eyes
-
-    imgProcThread.setCurrNumEyes(eyeRect.length);
-    framesEyes = 0;
-    imgProcessed= true;
-  }
-  else
-  {
-    framesEyes++;
-  }
-  */
   
   //mouse activity detection
-  if(!imgProcessed)
-  {
-    mouseUpdate();
-  }
+  mouseUpdate();
 
   //window overlap detection
-  if(!imgProcessed)
+  if(windowIndex == 10)
   {
     windowUpdate();
+    windowIndex = 0;
+  }
+  else
+  {
+    windowIndex++;
   }
 
   //draw circle and trail after calculating user attention probability
   calculateAndDraw();
-
 }
 
 
@@ -316,6 +287,7 @@ void calculateAndDraw()
     + max(0, ((10.0 - ((millis() - mouseTimer) / 1000.0)) * 8.0))
     + max(0, ((10.0 - ((millis() - keyTimer) / 1000.0)) * 5.0))
     ) / 540.0;
+    
   //override probability if window is fully covered  
   if(currWindowCoverage == 100)
   {
@@ -369,7 +341,5 @@ void calculateAndDraw()
   }
 
   //draw main circle
-  circle.drawCircle();
+  circle.drawCircle();                                                 
 }
-
-

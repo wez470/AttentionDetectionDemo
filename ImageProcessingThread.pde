@@ -26,42 +26,42 @@ class ImageProcessingThread extends Thread
   void run()
   {
     while(running)
-    {  
+    { 
       try
       {
-      if(faceCount >= 10)
-      {
-        //Face Detection
-        cam.update(); //get new frame/info from kinect
-        opencv.copy(cam.rgbImage()); //get the current frame into opencv
-    
-        opencv.cascade("C:/opencv/data/haarcascades/", "haarcascade_frontalface_alt_tree.xml"); //initialize detection of face
-        faceRect = opencv.detect(false); //get rectangle array of faces
-    
-        setCurrNumFaces(faceRect.length);
-        faceCount = 0;
-      }
-      else
-      {
-        faceCount++;
-      }
+        if(faceCount >= 10)
+        {
+          //Face Detection
+          cam.update(); //get new frame/info from kinect
+          opencv.copy(cam.rgbImage()); //get the current frame into opencv
       
-      if(eyeCount >= 10)
-      {
-        //Eye Detection
-        cam.update(); //get new frame/info from kinect
-        opencv.copy(cam.rgbImage()); //get the current frame into opencv
+          opencv.cascade("C:/opencv/data/haarcascades/", "haarcascade_frontalface_alt_tree.xml"); //initialize detection of face
+          faceRect = opencv.detect(false); //get rectangle array of faces
       
-        opencv.cascade("C:/opencv/data/haarcascades/", "haarcascade_eye.xml"); //initialize detection of eyes
-        eyeRect = opencv.detect(false); //get rectangle array of eyes
-    
-        setCurrNumEyes(eyeRect.length);
-        eyeCount = 0;
-      }
-      else
-      {
-        eyeCount++;
-      }
+          setCurrNumFaces(faceRect.length);
+          faceCount = 0;
+        }
+        else
+        {
+          faceCount++;
+        }
+        
+        if(eyeCount >= 10)
+        {
+          //Eye Detection
+          cam.update(); //get new frame/info from kinect
+          opencv.copy(cam.rgbImage()); //get the current frame into opencv
+        
+          opencv.cascade("C:/opencv/data/haarcascades/", "haarcascade_eye.xml"); //initialize detection of eyes
+          eyeRect = opencv.detect(false); //get rectangle array of eyes
+      
+          setCurrNumEyes(eyeRect.length);
+          eyeCount = 0;
+        }
+        else
+        {
+          eyeCount++;
+        }
       } catch(Exception e)
       {
         println("Ran out of memory. Aborting");
